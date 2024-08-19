@@ -1,0 +1,420 @@
+= Python, extensions and pickle in Ren'Py
+:subtitle: Create and update extensions for Ren'Py
+:source-highlighter: highlight.js
+:revealjs_defaultTiming: 60
+:nofooter:
+
+== Presentation
+
+ifndef::backend-revealjs[]
+TIP: All code examples are available in example games in the directory `examples` in the project's repository. You will need a working Ren'Py SDK install to run them.
+endif::[]
+
+== What is Ren'Py?
+
+ifdef::backend-revealjs[=== !]
+
+// Include Visual Novel snapshots
+
+=== How does it work?
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+Ren'py uses text files with the extension `.rpy` to implement a game's content.
+
+Those files may at any depth in the `game/` directory in the project. When Ren'Py reads them, they are compiled into .rpyc files 
+
+NOTE: Code in `examples/01-simple-game`
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+# game/game.rpy
+include::examples/01-simple-game/game/game.rpy[]
+....
+
+ifdef::backend-revealjs[=== !]
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+init python:
+  def square(x):
+    return x**2
+....
+
+== A simple Jar
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+Now, let's build something simple. Let's say we want to
+be able to count the number of instances of an item and,
+instead of storing this information as a number in a
+dedicated variable like any normal human being, we want to
+use OOP to represent the data, so that it is "future-proof*TM*".
+
+We want to create the object class in an `init python` block.
+This a scope loaded at the start of the game where we can use
+python code freely.
+
+This class will take an initial amount as a contructor parameter
+and will provide two helper functions: `add` and `take`.
+
+NOTE: Code in `examples/02-extension`
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+# game/awesome_extension.rpy
+include::examples/02-extension/game/awesome_extension.rpy[]
+....
+
+ifdef::backend-revealjs[]
+=== !
+
+[.notes]
+--
+endif::[]
+Once we have our class, we can start to use it in our game...
+Or create a game to test our extension if we don't already have
+one.
+
+The following code is a full, mostly-working
+ifndef::backend-revealjs[]
+footnote:[We also need a `yesno_prompt` screen to avoid throwing an error when quitting the game via the window's button.]
+endif::[]
+, Ren'Py game.
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+# game/game.rpy
+include::examples/02-extension/game/game.rpy[]
+....
+
+ifdef::backend-revealjs[]
+=== !
+
+And... We're ready to ship.
+
+[%step]
+Or not
+
+[.notes]
+--
+endif::[]
+That's it, we're done. This is the end. We can pack those two
+files and share them with any potential user, and they will
+have both our "extension" and an example to build from should
+they need to. Ain't that great?
+
+And you might feel at peace for a while, but that will all
+change when the user reports attack.
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+
+// TODO: add load order (based on filename) and init level (-500) information
+=== The load order
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+And indeed, user reports will come. The first ones should
+have errors that look like this:
+
+NOTE: Code in `examples/03-extension-load-order`
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, log, highlight="..|12"]
+....
+include::resources/logs/class_not_found.log[]
+....
+
+ifdef::backend-revealjs[=== !]
+
+What happened?
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+When trying to debug with the users you might notice their directory
+layout looking like this:
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[%step]
+[source]
+....
+╵-game
+  |-game.rpy
+  ╵-jar_extension
+    ╵-awesome_extension.rpy
+....
+
+ifdef::backend-revealjs[=== !]
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+This should have given you a hint of where the issue lies: the
+extension is loaded too late by Ren'Py and its content is thus not
+available when the code using it is executed.
+
+Ren'Py uses the file's full path (e.g.:
+`game/jar_extension/awesome_extension`) to determine the order in
+which files should be loaded. By convention, files with names starting
+with `00` are reserved for Ren'Py's internal use
+ifndef::backend-revealjs[]
+footnote:[Warned by the VSCode extension, this is not enforced by Ren'Py itself]
+endif::[]
+, thus if we want to ensure that our file is loaded as soon as
+possible, we should name all directories (and the file itself) with
+a `01` at the start to limit the problem.
+
+Now, this is a good thing to do and a good habit to take, but it also
+feels very fragile: if I download an "extension" for my game, I want
+to be able to place it where I want. Luckily, we can enforce the load
+order differently in Ren'Py with init levels.
+
+Init levels are a Ren'Py concept that allow developpers to enforce
+a specific load order for code sections. They range from -1500 to 1500
+though the 501 first and last init levels are reserved for Ren'Py
+ifndef::backend-revealjs[footnote:[https://www.renpy.org/doc/html/python.html#init-python-statement]]
+. By default, all user-defined code in a game is loaded at init level
+0, so we simply need to provide a lower init level at the start of our `python` block to prevent this kind of issue:
+
+NOTE: Code in `examples/04-extension-with-load-order`
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python, highlight=1|2]
+--
+# game/01_jar_extension/01_awesome_extension.rpy
+include::examples/04-extension-with-load-order/game/01_jar_extension/01_awesome_extension.rpy[lines=1..5]
+    # [...]
+--
+
+== Updates and pickle
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+We now have a small package of working code, which is nice. But
+we suddenly realize that an infinite jar is yet to be invented
+and that we should probably add the possibility to raise an error
+if a jar is overfilled
+ifndef::backend-revealjs[]
+footnote:[Don't actually do this for a game, prefer non-intrusive
+warnings and discreet handling of such errors when possible so as
+to not stop the game catastrophically in simple cases]
+endif::[]
+.
+
+NOTE: Code in `examples/05-extension-updated`
+
+To do so, let's simply add a `maximum` size attribute to the `Jar`
+and check its value when adding items:
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python, highlight="4,6|11..12"]
+--
+# game/01_jar_extension/01_awesome_extension.rpy
+include::examples/05-extension-updated/game/01_jar_extension/01_awesome_extension.rpy[lines="1..12"]
+    # [...]
+--
+
+ifdef::backend-revealjs[=== !]
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+Now, if a user simply instanciates our `Jar` with a `maximum`,
+an error will be thrown if they try to add too many items. After
+running a few games with this new `Jar`, we can release a new
+version... and get submerged by user reports. Again.
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, log, highlight=..|12|10..11]
+--
+include::resources/logs/updated_class_load.log[]
+--
+
+=== Saves in a pickle
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+What happened? When we tested, everything was fine!
+
+Users claim that they can't resume previous games as all saves
+appear to be corrupted. Starting new games works fine though,
+but this is clearly not an acceptable situation for our users.
+
+The secret lies in the way Ren'Py saves and reloads games.
+Internally, Ren'Py uses the Python library `pickle` to pack
+and unpack a game's state. Pickle's behavior makes it skip
+the `__init__` method when re-creating objects; it then injects
+the saved attributes in the created object. In our case, this
+means that we're using `Jar` with pre-update attributes (only
+`count`) with code that expects post-update attributes (both
+`count` and `maximum`).
+
+When developping a Ren'Py game, we may use the `after_load` label
+ifndef::backend-revealjs[]
+footnote:[https://www.renpy.org/doc/html/label.html#special-labels]
+endif::[]
+to resolve this kind of migration issues, however this is
+something that should be used by the game developers, not by
+extension developers.
+
+To resolve migration issues in extension classes, we should use
+`\\__setstate__`, which - if defined - is called by pickle to
+initialize object instances. But that's not all! We also need to
+handle rollback, which is handled by Ren'Py itself. When rolling
+back, Ren'Py tries to call the function `_rollback` to initialize
+the object's state - which it may do with a previous-version save's
+data, so we also need to overload it.
+
+NOTE: Code in `examples/06-extension-updated-with-pickle`
+
+Note that the state provided to `_rollback` may be reused
+when rolling forward, so we should not modify the incoming dict
+directly (though it should not be an issue functionnally *if* we
+can guaranty that the update is idempotent). Considering both of those use-cases, it is better if we can implement an `_update` method
+and call it from the setter methods:
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+# game/01_jar_extension/01_awesome_extension.rpy
+include::examples/06-extension-updated-with-pickle/game/01_jar_extension/01_awesome_extension.rpy[lines="1,2"]
+include::examples/06-extension-updated-with-pickle/game/01_jar_extension/01_awesome_extension.rpy[tag=update]
+    # [...]
+....
+
+ifdef::backend-revealjs[=== !]
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+This is good, but not very future-proof. To be able to easily update
+the class, we'd like to have a version in our state and leverage it
+to know what changes we should make to have an up-to-date object.
+Like this:
+
+NOTE: Code in `examples/07-extension-future-updates`
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+# game/01_jar_extension/01_awesome_extension.rpy
+include::examples/07-extension-future-updates/game/01_jar_extension/01_awesome_extension.rpy[lines="1,2"]
+include::examples/07-extension-future-updates/game/01_jar_extension/01_awesome_extension.rpy[tag=update]
+    # [...]
+....
+
+ifdef::backend-revealjs[=== !]
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+To be able to use this version number, we need to add it to the
+saved state. To do so, we need to implement the function used by
+pickle (`\\__getstate__`) as well as the one used by Ren'Py (`_clean`)
+to extract the object's state. Note that the `_compress` method is
+implemented here for the sake of completeness and is called by Ren'Py to
+"compress" the value returned by `_clean`.
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+# game/01_jar_extension/01_awesome_extension.rpy
+include::examples/07-extension-future-updates/game/01_jar_extension/01_awesome_extension.rpy[lines="1,2"]
+include::examples/07-extension-future-updates/game/01_jar_extension/01_awesome_extension.rpy[tag=version_number]
+include::examples/07-extension-future-updates/game/01_jar_extension/01_awesome_extension.rpy[tag=save]
+....
+
+=== Note on slotted classes
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+Slotted classes provide better attribute access performance and
+memory usage for python classes at the cost of declaring their
+valid attributes as a `\\__slots__` class attribute
+ifndef::backend-revealjs[]
+footnote:[See Python's documentation for details https://docs.python.org/3/reference/datamodel.html#slots]
+endif::[]
+. Ren'Py does not quite support those as handling attribute changes
+with slots is less trivial than with dicts, is a use-case that
+is not relevant to most users, and that games that use Ren'Py
+should not be performance-sensitive as Ren'Py is not designed
+for high-frequency play
+ifndef::backend-revealjs[]
+footnote:[For performance-sensitive VN games, take a look at https://godotengine.org/[Godot] with the https://godotengine.org/asset-library/asset/1207[Dialogue Manager] plugin]
+endif::[]
+. You may still create slotted class, but should only use them for
+global game state that is neither part of rollback, nor part of saves.
+
+NOTE: Code in `examples/08-slot-fail`
+
+The following shows how to declare our `Jar` class with slots
+and the error that appears in Ren'Py if we do so:
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+# game/01_jar_extension/01_awesome_extension.rpy
+include::examples/08-slot-fail/game/01_jar_extension/01_awesome_extension.rpy[lines="1,2"]
+include::examples/08-slot-fail/game/01_jar_extension/01_awesome_extension.rpy[tag=slots]
+....
+
+[source, log, highlight=..|12]
+....
+include::resources/logs/slotted_class_fail.log[]
+....

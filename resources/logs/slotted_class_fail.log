@@ -1,0 +1,12 @@
+Full traceback:
+  File "game/01_jar_extension/01_awesome_extension.rpy", line 1, in script
+    init -999 python:
+  File "/games/renpy/renpy/ast.py", line 823, in execute
+    renpy.python.py_exec_bytecode(self.code.bytecode, self.hide, store=self.store)
+  File "/games/renpy/renpy/python.py", line 1178, in py_exec_bytecode
+    exec(bytecode, globals, locals)
+  File "game/01_jar_extension/01_awesome_extension.rpy", line 2, in <module>
+    class Jar(object):
+  File "/games/renpy/renpy/revertable.py", line 495, in __init_subclass__
+    raise TypeError("Classes with __slots__ do not support rollback. "
+TypeError: Classes with __slots__ do not support rollback. To create a class with slots, inherit from python_object instead.

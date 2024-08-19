@@ -360,10 +360,18 @@ ifdef::backend-revealjs[]
 endif::[]
 To be able to use this version number, we need to add it to the
 saved state. To do so, we need to implement the function used by
-pickle (`\\__getstate__`) as well as the one used by Ren'Py (`_clean`)
-to extract the object's state. Note that the `_compress` method is
-implemented here for the sake of completeness and is called by Ren'Py to
-"compress" the value returned by `_clean`.
+pickle (`\\__getstate__`) as well as the one used by Ren'Py (`\_clean`)
+to extract the object's state
+ifndef::backend-revealjs[]
+footnote:[We use a class attribute to store the version in our example
+as it is what Ren'Py does in its own codebase, however we could also
+use an object-local attribute, which would remove the need to overwride
+the default `\__getstate__` and `_clean` implementations - See the
+`Object` class in `renpy/object.py` in Ren'Py's codebase for an example.]
+endif::[]
+. Note that the `_compress` method is implemented here for the sake of
+completeness and is called by Ren'Py to "compress" the value returned
+by `_clean`.
 ifdef::backend-revealjs[]
 --
 endif::[]

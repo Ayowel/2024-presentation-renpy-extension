@@ -1,0 +1,40 @@
+name: Build GH Pages content
+
+on:
+  push:
+    branches: [ "master" ]
+
+env:
+    RUBY_VERSION: "${{ vars.RUBY_VERSION || '3.3' }}"
+    REVEALJS_SOURCE: "${{ vars.REVEALJS_SOURCE || 'https://cdn.jsdelivr.net/npm/reveal.js@5.1.0' }}"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Ruby ${{ env.RUBY_VERSION }}
+      uses: ruby/setup-ruby@v1.190.0
+      with:
+        ruby-version: "${{ env.RUBY_VERSION }}"
+    - name: Install dependencies
+      run: |
+        gem install asciidoctor asciidoctor-revealjs asciidoctor-pdf
+
+    - name: Build html document
+      run: |
+        asciidoctor -o document.html presentation.adoc
+    - name: Build html presentation
+      run: |
+        asciidoctor -r asciidoctor-revealjs -b revealjs -a revealjsdir="${{ env.REVEALJS_SOURCE }}" -o index.html presentation.adoc
+    - name: Build PDF document
+      run: |
+        asciidoctor-pdf -o document.pdf presentation.adoc
+
+    - name: Commit report
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: Build presentation content
+        branch: gh-pages
+        create_branch: true
+        push_options: '--force'

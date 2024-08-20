@@ -17,5 +17,5 @@
 ```bash
 # From the directory extension-loader
 touch -t 198001010000 autorun.py
-zip 01-extension-loader.rpe autorun.py
+zip -X9o 01-extension-loader.rpe autorun.py
 ```

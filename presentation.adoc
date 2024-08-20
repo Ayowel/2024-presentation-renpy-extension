@@ -7,7 +7,7 @@
 == Presentation
 
 ifndef::backend-revealjs[]
-TIP: All code examples are available in example games in the directory `examples` in the project's repository. You will need a working Ren'Py SDK install to run them.
+IMPORTANT: All code examples are available in example games in the directory `examples` in the project's repository. You will need a working Ren'Py SDK install to run them.
 endif::[]
 
 == What is Ren'Py?
@@ -425,4 +425,64 @@ include::examples/08-slot-fail/game/01_jar_extension/01_awesome_extension.rpy[ta
 [source, log, highlight=..|12]
 ....
 include::resources/logs/slotted_class_fail.log[]
+....
+
+== Ren'Py native extensions - Who needs doc ayway?
+
+ifdef::backend-revealjs[]
+[.notes]
+--
+endif::[]
+Ren'Py supports a "native" kind of extensions, which is
+undocumented, forgotten, and requires some work to get to
+work correctly. It has the notable advantage and drawback
+of running very early (before Ren'Py even starts parsing
+`.rpy` files), which is great to make code modifications to
+the way Ren'Py processes data. They are also packaged as
+zip files, which makes users much less likely to mess with
+the extension's content. The following is a primer on what to
+do to get a basic extension running.
+
+IMPORTANT: All showcased extension code in the examples is in the
+`extensions/` directory. This works thanks to the `extension-loader`
+extension added as `game/01-extension-loader.rpe`, however extensions
+would normally need to be zipped with the `.rpe` extension and added
+directly under the `game/` directory to work.
+
+To build an extension's archive from the command-line,
+create a zip from its content and make sure that the
+`autorun.py` is at the archive's root:
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[%step]
+[source, bash]
+....
+zip my_extension.rpe autorun.py
+....
+
+ifdef::backend-revealjs[]
+=== !
+
+[.notes]
+--
+endif::[]
+To migrate our extension to use Ren'Py extensions, we
+should start by moving our class' declaration to the
+`autorun.py` file. Because the autorun is executed in
+a different context, the class will not be available
+in renpy if we don't explicitly add it to the Ren'Py
+store, which we should immediately do:
+
+NOTE: Code in `examples/09-rpe-basics`
+ifdef::backend-revealjs[]
+--
+endif::[]
+
+[source, python]
+....
+# extensions/jar_extension/autorun.py
+include::examples/09-rpe-basics/extensions/jar_extension/autorun.py[tag=init]
+include::examples/09-rpe-basics/extensions/jar_extension/autorun.py[tag=injection]
 ....
